@@ -68,7 +68,7 @@ function FrequencyChart({ frequency }: { frequency: any }) {
       </div>
       <div className="bg-[#050807] border border-green-500/10 rounded-xl p-4 overflow-x-auto relative group">
         <div className="flex items-end gap-1.5 min-w-[500px] h-[140px] pt-8">
-          {sorted.map(([char, val]) => {
+          {sorted.map(([char, val]: [string, any]) => {
             const count = typeof val === 'number' ? val : val[0];
             const pct = typeof val === 'number' ? 0 : val[1];
             
