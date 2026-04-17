@@ -49,34 +49,58 @@ export function ClassicalModule() {
 }
 
 /* ═══ Frequency Analysis Chart Component ═══ */
-function FrequencyChart({ frequency }: { frequency: Record<string, number> }) {
+function FrequencyChart({ frequency }: { frequency: any }) {
   if (!frequency || Object.keys(frequency).length === 0) return null;
 
-  const maxVal = Math.max(...Object.values(frequency), 1);
+  // frequency is { "A": [count, percentage], "B": [count, percentage] ... }
+  // Extract just the count value for the max calculation
+  const maxVal = Math.max(...Object.values(frequency).map((val: any) => typeof val === 'number' ? val : val[0]), 1);
   const sorted = Object.entries(frequency).sort((a, b) => a[0].localeCompare(b[0]));
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-      <div className="flex items-center gap-2 mb-3">
-        <BarChart3 className="w-3.5 h-3.5 text-green-500" />
-        <span className="section-label !mb-0 text-green-500">Frequency Analysis</span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-3.5 h-3.5 text-green-500" />
+          <span className="section-label !mb-0 text-green-500">Frequency Analysis Breakdown</span>
+        </div>
+        <span className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">Counts & Percentages</span>
       </div>
-      <div className="bg-[#050807] border border-green-500/10 rounded-xl p-4 overflow-x-auto">
-        <div className="flex items-end gap-1 min-w-[500px] h-[120px]">
-          {sorted.map(([char, count]) => (
-            <div key={char} className="flex-1 flex flex-col items-center gap-1 group">
-              <span className="text-[8px] font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                {count}
-              </span>
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: `${(count / maxVal) * 80}px` }}
-                transition={{ duration: 0.5 }}
-                className="w-full bg-gradient-to-t from-green-500/60 to-green-400/30 rounded-t group-hover:from-green-500 group-hover:to-green-400/60 transition-colors min-h-[2px]"
-              />
-              <span className="text-[9px] font-mono text-slate-400 font-bold">{char}</span>
-            </div>
-          ))}
+      <div className="bg-[#050807] border border-green-500/10 rounded-xl p-4 overflow-x-auto relative group">
+        <div className="flex items-end gap-1.5 min-w-[500px] h-[140px] pt-8">
+          {sorted.map(([char, val]) => {
+            const count = typeof val === 'number' ? val : val[0];
+            const pct = typeof val === 'number' ? 0 : val[1];
+            
+            return (
+              <div key={char} className="flex-1 flex flex-col items-center gap-1.5 relative group/bar cursor-pointer">
+                {/* Tooltip on hover */}
+                <div className="absolute bottom-full mb-1 opacity-0 group-hover/bar:opacity-100 transition-opacity flex flex-col items-center pointer-events-none z-10 w-[40px]">
+                  <div className="bg-green-950 border border-green-500/30 rounded px-1.5 py-1 flex flex-col items-center shadow-xl">
+                    <span className="text-[10px] font-bold text-white">{count}</span>
+                    <span className="text-[8px] font-mono text-green-400">{pct}%</span>
+                  </div>
+                  <div className="w-0 h-0 border-l-[4px] border-l-transparent border-t-[4px] border-t-green-500/30 border-r-[4px] border-r-transparent"></div>
+                </div>
+
+                {/* The Bar */}
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${(count / maxVal) * 90}px` }}
+                  transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
+                  className={`w-full rounded-t-sm transition-all duration-300 min-h-[3px] 
+                    ${count > 0 
+                      ? 'bg-gradient-to-t from-green-500/30 to-green-400/80 group-hover/bar:from-green-500 group-hover/bar:to-green-300 shadow-[0_0_10px_rgba(34,197,94,0.1)] group-hover/bar:shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                      : 'bg-white/5 group-hover/bar:bg-white/10'}`}
+                />
+                
+                {/* Letter Label */}
+                <span className={`text-[10px] font-mono font-bold transition-colors ${count > 0 ? 'text-green-400' : 'text-slate-600 group-hover/bar:text-slate-400'}`}>
+                  {char}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </motion.div>
