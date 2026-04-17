@@ -36,7 +36,7 @@ export default function Home() {
                 <Hexagon className="w-4 h-4 text-green-400 relative z-10" />
               </div>
               <h1 className="text-lg font-black tracking-[0.2em] text-white uppercase">
-                PILSO<span className="text-white/15 px-1.5 font-light">/</span><span className="text-green-400">CRYPTO</span>
+                KRYPTOS<span className="text-white/15 px-1.5 font-light">/</span><span className="text-green-400">ENGINE</span>
               </h1>
             </motion.div>
 
@@ -83,7 +83,7 @@ export default function Home() {
           
           <motion.p {...fadeUp} transition={{ duration: 0.6, delay: 0.3 }}
             className="text-slate-400 mt-10 max-w-2xl text-sm md:text-base leading-relaxed">
-            PILSO OS is an interactive web-based cryptographic workbench. Input any plaintext message and watch it transform in real-time through classical ciphers, symmetric block encryption, or public-key algorithms — complete with step-by-step pipeline visualizations.
+            Kryptos is an interactive web-based cryptographic workbench. Input any plaintext message and watch it transform in real-time through classical ciphers, symmetric block encryption, or public-key algorithms — complete with step-by-step pipeline visualizations.
           </motion.p>
           
           <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.5 }} className="flex flex-col sm:flex-row gap-4 mt-12">
@@ -152,7 +152,7 @@ export default function Home() {
           <motion.div {...fadeUp} className="text-center mb-16">
             <p className="text-[10px] font-bold text-green-500 uppercase tracking-[0.3em] mb-4">Core Capabilities</p>
             <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-widest">
-              Why <span className="gradient-text-neon">PILSO</span>
+              Why <span className="gradient-text-neon">Kryptos</span>
             </h3>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -265,7 +265,7 @@ export default function Home() {
               Core <span className="gradient-text-neon">Maintainers</span>
             </h3>
             <p className="text-slate-500 font-mono text-xs mt-4 uppercase tracking-widest">
-              The engineers behind the PILSO Crypto Engine.
+              The engineers behind the Kryptos Engine.
             </p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
@@ -300,7 +300,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <Hexagon className="w-5 h-5 text-green-500/40" />
-              <span className="text-xs font-bold tracking-[0.15em] text-slate-500 uppercase">PILSO OS © 2026 — CSE 721 Project</span>
+              <span className="text-xs font-bold tracking-[0.15em] text-slate-500 uppercase">KRYPTOS © 2026 — CSE 721 Project</span>
             </div>
             <div className="flex gap-6 text-[10px] font-mono text-slate-500 uppercase tracking-[0.15em]">
               <span className="hover:text-green-400 transition-colors cursor-pointer hover:underline underline-offset-4">Documentation</span>

@@ -85,7 +85,7 @@ function DashboardInner() {
               <Hexagon className="w-4 h-4 text-green-400" />
             </div>
             <div>
-              <h1 className="text-sm font-black tracking-[0.25em] text-white uppercase">PILSO</h1>
+              <h1 className="text-sm font-black tracking-[0.25em] text-white uppercase">KRYPTOS</h1>
               <p className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">Crypto Engine v1.0</p>
             </div>
           </div>

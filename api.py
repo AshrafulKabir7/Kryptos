@@ -13,7 +13,7 @@ from symmetric.aes import AES, state_to_bytes
 from public_key.rsa import RSA
 from public_key.ecc import get_small_demo_curve, get_secp256k1, get_p256, EllipticCurve
 
-app = FastAPI(title="CSE721 Crypto API")
+app = FastAPI(title="Kryptos API")
 
 app.add_middleware(
     CORSMiddleware,
