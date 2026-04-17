@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: #0a0f0d; /* Extremely deep muted tone from reference */
+    color: #f1f5f9;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(34, 197, 94, 0.3); /* Neon green */
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(34, 197, 94, 0.3);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 197, 94, 0.5);
+  }
+}
+
+@layer components {
+  /* Pilso/Web3 Aesthetic Cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.015);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .glass-card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-card-hover:hover {
+    border-color: rgba(74, 222, 128, 0.15); /* #4ade80 glow */
+    box-shadow: 0 0 40px rgba(74, 222, 128, 0.03);
+    transform: translateY(-1px);
+  }
+
+  /* Deep dark inputs from reference */
+  .input-dark {
+    background: #0d1210;
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #f8fafc;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    outline: none;
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .input-dark::placeholder {
+    color: rgba(148, 163, 184, 0.4);
+    font-family: 'Inter', sans-serif;
+  }
+  .input-dark:focus {
+    border-color: rgba(34, 197, 94, 0.6);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.1);
+    background: #0f1714;
+  }
+
+  .textarea-dark {
+    background: #0d1210;
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #f8fafc;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    outline: none;
+    width: 100%;
+    resize: none;
+    line-height: 1.6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .textarea-dark::placeholder {
+    color: rgba(148, 163, 184, 0.4);
+    font-family: 'Inter', sans-serif;
+  }
+  .textarea-dark:focus {
+    border-color: rgba(34, 197, 94, 0.6);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.1);
+    background: #0f1714;
+  }
+
+  /* Solid neon green button similar to 'Read the docs' */
+  .btn-primary {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #064e3b; /* Dark text on bright background */
+    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: 30px; /* High rounding */
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4);
+    background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+  }
+
+  /* Hollow neon button from reference 'Install Via Npm' */
+  .btn-outline {
+    background: transparent;
+    color: #a3e635;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 30px;
+    border: 1px solid rgba(132, 204, 22, 0.3);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 14px;
+  }
+  .btn-outline:hover {
+    background: rgba(132, 204, 22, 0.05);
+    border-color: rgba(132, 204, 22, 0.8);
+    box-shadow: 0 0 20px rgba(132, 204, 22, 0.1);
+    color: #d9f99d;
+  }
+
+  .result-box {
+    background: #090e0c;
+    border: 1px solid rgba(74, 222, 128, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #86efac;
+    word-break: break-all;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  }
+
+  .round-key-terminal {
+    background: #050807;
+    border: 1px solid rgba(74, 222, 128, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    max-height: 220px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #4ade80;
+    line-height: 1.8;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 8px;
+  }
+
+  /* Single generic neon text element */
+  .gradient-text-neon {
+    background: linear-gradient(135deg, #bef264 0%, #4ade80 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
