@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Hexagon, Zap, Server, ArrowRight, User, Terminal, Shield, Mail, Globe, Code2, Lock, KeyRound, Binary, Cpu, ArrowDown, Fingerprint, Layers, Hash, Network } from 'lucide-react';
+import { Hexagon, Zap, Server, ArrowRight, User, Terminal, Shield, Mail, Globe, Code2, Lock, KeyRound, Binary, Cpu, ArrowDown, Fingerprint, Layers, Hash, Network, Github, Linkedin } from 'lucide-react';
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -269,8 +269,8 @@ export default function Home() {
             </p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <CreatorCard name="Creator One" role="Security Architect" delay={0} />
-            <CreatorCard name="Ashraful Kabir" role="Lead Protocol Dev" delay={0.15} />
+            <CreatorCard name="Farhan Faruk" role="Security Architect" icon={<Shield className="w-7 h-7 text-green-400 relative z-10 group-hover:scale-110 transition-transform" />} delay={0} />
+            <CreatorCard name="Ashraful Kabir Alif" role="Lead Protocol Dev" icon={<Code2 className="w-7 h-7 text-green-400 relative z-10 group-hover:scale-110 transition-transform" />} delay={0.15} />
           </div>
         </section>
 
@@ -382,7 +382,7 @@ function StatBlock({ value, label }: any) {
   );
 }
 
-function CreatorCard({ name, role, delay }: any) {
+function CreatorCard({ name, role, delay, icon }: any) {
   return (
     <motion.div {...fadeUp} transition={{ duration: 0.5, delay }}
       whileHover={{ y: -4, boxShadow: "0 20px 40px -10px rgba(34,197,94,0.12)" }}
@@ -390,7 +390,7 @@ function CreatorCard({ name, role, delay }: any) {
       <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 p-[2px] shadow-[0_0_15px_rgba(34,197,94,0.15)] flex-shrink-0">
         <div className="w-full h-full bg-[#070b09] rounded-full flex items-center justify-center relative overflow-hidden">
           <div className="absolute inset-0 bg-green-500/10 group-hover:bg-green-500/25 transition-colors duration-500"></div>
-          <User className="w-7 h-7 text-green-400 relative z-10 group-hover:scale-110 transition-transform" />
+          {icon || <User className="w-7 h-7 text-green-400 relative z-10 group-hover:scale-110 transition-transform" />}
         </div>
       </div>
       <div className="flex-1 min-w-0">
@@ -399,7 +399,8 @@ function CreatorCard({ name, role, delay }: any) {
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block"></span> {role}
         </p>
         <div className="flex gap-2 mt-3">
-          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Terminal className="w-3 h-3"/></motion.span>
+          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Github className="w-3 h-3"/></motion.span>
+          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Linkedin className="w-3 h-3"/></motion.span>
           <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Globe className="w-3 h-3"/></motion.span>
         </div>
       </div>
