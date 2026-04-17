@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Hexagon, Zap, Server, ArrowRight, User, Terminal, Shield, Mail, Globe, Code2, Lock, KeyRound, Binary, Cpu, ArrowDown, Fingerprint, Layers, Hash, Network, Github, Linkedin } from 'lucide-react';
+import { Hexagon, Zap, Server, ArrowRight, User, Terminal, Shield, Mail, Globe, Code2, Lock, KeyRound, Binary, Cpu, ArrowDown, Fingerprint, Layers, Hash, Network, Link, Code } from 'lucide-react';
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -399,8 +399,8 @@ function CreatorCard({ name, role, delay, icon }: any) {
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block"></span> {role}
         </p>
         <div className="flex gap-2 mt-3">
-          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Github className="w-3 h-3"/></motion.span>
-          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Linkedin className="w-3 h-3"/></motion.span>
+          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Code className="w-3 h-3"/></motion.span>
+          <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Link className="w-3 h-3"/></motion.span>
           <motion.span whileHover={{ scale: 1.2 }} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-green-400 hover:bg-green-500/15 transition-all cursor-pointer"><Globe className="w-3 h-3"/></motion.span>
         </div>
       </div>
