@@ -24,7 +24,8 @@ export default function Auth() {
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
     
     try {
-      const response = await fetch(`http://localhost:8000/api${endpoint}`, {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
