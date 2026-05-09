@@ -1,18 +1,5 @@
-"""
-CSE721: Introduction to Cryptography
-Symmetric-Key Cryptography - Advanced Encryption Standard (AES-128)
-Implements: Encryption, Decryption, Key Expansion (all 11 round keys)
-Fully from scratch — no external crypto libraries.
-"""
-
 import os
 
-
-# ============================================================
-#  AES LOOKUP TABLES
-# ============================================================
-
-# AES S-box (SubBytes forward)
 SBOX = [
     0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
     0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
@@ -32,7 +19,6 @@ SBOX = [
     0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16,
 ]
 
-# AES Inverse S-box (SubBytes inverse)
 INV_SBOX = [
     0x52,0x09,0x6a,0xd5,0x30,0x36,0xa5,0x38,0xbf,0x40,0xa3,0x9e,0x81,0xf3,0xd7,0xfb,
     0x7c,0xe3,0x39,0x82,0x9b,0x2f,0xff,0x87,0x34,0x8e,0x43,0x44,0xc4,0xde,0xe9,0xcb,
@@ -52,22 +38,15 @@ INV_SBOX = [
     0x17,0x2b,0x04,0x7e,0xba,0x77,0xd6,0x26,0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d,
 ]
 
-# Round constants for key expansion
 RCON = [0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1b,0x36]
 
 
-# ============================================================
-#  GF(2^8) arithmetic (for MixColumns)
-# ============================================================
-
-def xtime(a: int) -> int:
-    """Multiply by 2 in GF(2^8) with irreducible polynomial 0x1b."""
+def xtime(a):
     if a & 0x80:
         return ((a << 1) ^ 0x1b) & 0xFF
     return (a << 1) & 0xFF
 
-def gmul(a: int, b: int) -> int:
-    """Multiply two bytes in GF(2^8)."""
+def gmul(a, b):
     result = 0
     while b:
         if b & 1:
@@ -76,56 +55,39 @@ def gmul(a: int, b: int) -> int:
         b >>= 1
     return result
 
-
-# ============================================================
-#  AES state helpers (4×4 byte matrix, column-major)
-# ============================================================
-
-def bytes_to_state(data: bytes) -> list:
-    """Convert 16 bytes to 4×4 state matrix (column-major)."""
+def bytes_to_state(data):
     state = [[0] * 4 for _ in range(4)]
     for r in range(4):
         for c in range(4):
             state[r][c] = data[r + 4 * c]
     return state
 
-def state_to_bytes(state: list) -> bytes:
-    """Convert 4×4 state matrix back to 16 bytes (column-major)."""
+def state_to_bytes(state):
     out = bytearray(16)
     for r in range(4):
         for c in range(4):
             out[r + 4 * c] = state[r][c]
     return bytes(out)
 
-
-# ============================================================
-#  AES Operations
-# ============================================================
-
-def sub_bytes(state: list) -> list:
-    """SubBytes: apply S-box to every byte."""
+def sub_bytes(state):
     return [[SBOX[state[r][c]] for c in range(4)] for r in range(4)]
 
-def inv_sub_bytes(state: list) -> list:
-    """Inverse SubBytes: apply inverse S-box."""
+def inv_sub_bytes(state):
     return [[INV_SBOX[state[r][c]] for c in range(4)] for r in range(4)]
 
-def shift_rows(state: list) -> list:
-    """ShiftRows: cyclically shift row r left by r positions."""
+def shift_rows(state):
     new_state = [row[:] for row in state]
     for r in range(1, 4):
         new_state[r] = state[r][r:] + state[r][:r]
     return new_state
 
-def inv_shift_rows(state: list) -> list:
-    """Inverse ShiftRows: cyclically shift row r right by r positions."""
+def inv_shift_rows(state):
     new_state = [row[:] for row in state]
     for r in range(1, 4):
         new_state[r] = state[r][4-r:] + state[r][:4-r]
     return new_state
 
-def mix_columns(state: list) -> list:
-    """MixColumns: multiply each column by fixed matrix in GF(2^8)."""
+def mix_columns(state):
     new_state = [[0]*4 for _ in range(4)]
     for c in range(4):
         col = [state[r][c] for r in range(4)]
@@ -135,8 +97,7 @@ def mix_columns(state: list) -> list:
         new_state[3][c] = gmul(col[0],3) ^ col[1]          ^ col[2]          ^ gmul(col[3],2)
     return new_state
 
-def inv_mix_columns(state: list) -> list:
-    """Inverse MixColumns."""
+def inv_mix_columns(state):
     new_state = [[0]*4 for _ in range(4)]
     for c in range(4):
         col = [state[r][c] for r in range(4)]
@@ -146,38 +107,18 @@ def inv_mix_columns(state: list) -> list:
         new_state[3][c] = gmul(col[0],0x0b)^gmul(col[1],0x0d)^gmul(col[2],0x09)^gmul(col[3],0x0e)
     return new_state
 
-def add_round_key(state: list, round_key: list) -> list:
-    """AddRoundKey: XOR state with round key (both 4×4)."""
+def add_round_key(state, round_key):
     return [[state[r][c] ^ round_key[r][c] for c in range(4)] for r in range(4)]
 
-
-# ============================================================
-#  AES Key Expansion
-# ============================================================
-
-def key_expansion(key: bytes) -> list:
-    """
-    Expand 16-byte AES-128 key into 11 round keys (44 words of 4 bytes each).
-    Returns list of 11 round keys, each a 4×4 byte matrix.
-    """
-    assert len(key) == 16, "AES-128 requires a 16-byte key."
-    # Work in terms of 4-byte words
-    W = []
-    for i in range(4):
-        W.append(list(key[4*i:4*i+4]))
-
+def key_expansion(key):
+    W = [list(key[4*i:4*i+4]) for i in range(4)]
     for i in range(4, 44):
         temp = W[i-1][:]
         if i % 4 == 0:
-            # RotWord: left rotate 1 byte
             temp = temp[1:] + temp[:1]
-            # SubWord: apply S-box
             temp = [SBOX[b] for b in temp]
-            # XOR with Rcon
             temp[0] ^= RCON[i // 4 - 1]
         W.append([W[i-4][j] ^ temp[j] for j in range(4)])
-
-    # Convert words to 4×4 state matrices (one per round: 11 total)
     round_keys = []
     for rk in range(11):
         rk_bytes = []
@@ -186,175 +127,110 @@ def key_expansion(key: bytes) -> list:
         round_keys.append(bytes_to_state(bytes(rk_bytes)))
     return round_keys
 
-
-# ============================================================
-#  AES Main Class
-# ============================================================
-
-class AES:
-    """
-    AES-128 implementation from scratch.
-    Block size: 128 bits (16 bytes).
-    Key size:   128 bits (16 bytes).
-    Rounds:     10
-    """
-
-    def __init__(self):
-        self._round_keys = []
-
-    def generate_key(self) -> bytes:
-        """Generate a random 128-bit AES key."""
-        return os.urandom(16)
-
-    # ------------------------------------------------------------------ #
-    #  Block-level encrypt / decrypt
-    # ------------------------------------------------------------------ #
-    def _encrypt_block(self, block: bytes, round_keys: list) -> bytes:
-        """Encrypt one 16-byte block."""
-        state = bytes_to_state(block)
-        # Initial round key addition
-        state = add_round_key(state, round_keys[0])
-
-        for rnd in range(1, 10):
-            state = sub_bytes(state)
-            state = shift_rows(state)
-            state = mix_columns(state)
-            state = add_round_key(state, round_keys[rnd])
-
-        # Final round (no MixColumns)
+def encrypt_block(block, round_keys):
+    state = bytes_to_state(block)
+    state = add_round_key(state, round_keys[0])
+    for rnd in range(1, 10):
         state = sub_bytes(state)
         state = shift_rows(state)
-        state = add_round_key(state, round_keys[10])
+        state = mix_columns(state)
+        state = add_round_key(state, round_keys[rnd])
+    state = sub_bytes(state)
+    state = shift_rows(state)
+    state = add_round_key(state, round_keys[10])
+    return state_to_bytes(state)
 
-        return state_to_bytes(state)
-
-    def _decrypt_block(self, block: bytes, round_keys: list) -> bytes:
-        """Decrypt one 16-byte block."""
-        state = bytes_to_state(block)
-        state = add_round_key(state, round_keys[10])
-
-        for rnd in range(9, 0, -1):
-            state = inv_shift_rows(state)
-            state = inv_sub_bytes(state)
-            state = add_round_key(state, round_keys[rnd])
-            state = inv_mix_columns(state)
-
-        # Final round
+def decrypt_block(block, round_keys):
+    state = bytes_to_state(block)
+    state = add_round_key(state, round_keys[10])
+    for rnd in range(9, 0, -1):
         state = inv_shift_rows(state)
         state = inv_sub_bytes(state)
-        state = add_round_key(state, round_keys[0])
+        state = add_round_key(state, round_keys[rnd])
+        state = inv_mix_columns(state)
+    state = inv_shift_rows(state)
+    state = inv_sub_bytes(state)
+    state = add_round_key(state, round_keys[0])
+    return state_to_bytes(state)
 
-        return state_to_bytes(state)
+def pad(data):
+    pad_len = 16 - (len(data) % 16)
+    return data + bytes([pad_len] * pad_len)
 
-    # ------------------------------------------------------------------ #
-    #  Padding (PKCS#7)
-    # ------------------------------------------------------------------ #
-    @staticmethod
-    def _pad(data: bytes) -> bytes:
-        pad_len = 16 - (len(data) % 16)
-        return data + bytes([pad_len] * pad_len)
+def unpad(data):
+    pad_len = data[-1]
+    if pad_len < 1 or pad_len > 16:
+        raise ValueError("Invalid AES padding.")
+    return data[:-pad_len]
 
-    @staticmethod
-    def _unpad(data: bytes) -> bytes:
-        pad_len = data[-1]
-        if pad_len < 1 or pad_len > 16:
-            raise ValueError("Invalid AES padding.")
-        return data[:-pad_len]
+def generate_key():
+    return os.urandom(16)
 
-    # ------------------------------------------------------------------ #
-    #  Public API (ECB mode for simplicity)
-    # ------------------------------------------------------------------ #
-    def encrypt(self, plaintext: bytes, key: bytes) -> bytes:
-        """Encrypt plaintext bytes using AES-128-ECB with PKCS#7 padding."""
-        round_keys = key_expansion(key)
-        self._round_keys = round_keys
-        padded = self._pad(plaintext)
-        ct = b""
-        for i in range(0, len(padded), 16):
-            ct += self._encrypt_block(padded[i:i+16], round_keys)
-        return ct
+def encrypt(plaintext, key):
+    round_keys = key_expansion(key)
+    padded = pad(plaintext)
+    ct = b""
+    for i in range(0, len(padded), 16):
+        ct += encrypt_block(padded[i:i+16], round_keys)
+    return ct
 
-    def decrypt(self, ciphertext: bytes, key: bytes) -> bytes:
-        """Decrypt ciphertext bytes using AES-128-ECB."""
-        round_keys = key_expansion(key)
-        self._round_keys = round_keys
-        pt = b""
-        for i in range(0, len(ciphertext), 16):
-            pt += self._decrypt_block(ciphertext[i:i+16], round_keys)
-        return self._unpad(pt)
+def decrypt(ciphertext, key):
+    round_keys = key_expansion(key)
+    pt = b""
+    for i in range(0, len(ciphertext), 16):
+        pt += decrypt_block(ciphertext[i:i+16], round_keys)
+    return unpad(pt)
 
-    # ------------------------------------------------------------------ #
-    #  Display helpers
-    # ------------------------------------------------------------------ #
-    def display_round_keys(self, key: bytes):
-        """Print all 11 round keys (round 0 = initial, rounds 1-10 = Feistel rounds)."""
-        round_keys = key_expansion(key)
-        self._round_keys = round_keys
-        print("\n  AES-128 Round Keys (K0 – K10):")
-        print("  " + "-" * 62)
-        print(f"  {'Round':<8} {'Round Key (hex, 128 bits)'}")
-        print("  " + "-" * 62)
-        for i, rk in enumerate(round_keys):
-            rk_bytes = state_to_bytes(rk)
-            rk_hex = rk_bytes.hex().upper()
-            # Format as 4 groups of 4 bytes
-            fmt = " ".join(rk_hex[j:j+8] for j in range(0, 32, 8))
-            label = "K0 (initial)" if i == 0 else f"K{i}"
-            print(f"  {label:<12} {fmt}")
-        print("  " + "-" * 62)
+def show_round_keys(key):
+    round_keys = key_expansion(key)
+    print("\n  AES-128 Round Keys:")
+    print(f"  {'Round':<12} {'Key (hex)'}")
+    print("  " + "-" * 50)
+    for i, rk in enumerate(round_keys):
+        rk_hex = state_to_bytes(rk).hex().upper()
+        fmt = " ".join(rk_hex[j:j+8] for j in range(0, 32, 8))
+        label = "K0 (initial)" if i == 0 else f"K{i}"
+        print(f"  {label:<12} {fmt}")
 
-
-# ============================================================
-#  Interactive CLI
-# ============================================================
 
 def run():
-    aes = AES()
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 55)
     print("       ADVANCED ENCRYPTION STANDARD (AES-128)")
-    print("=" * 60)
+    print("=" * 55)
 
-    # Auto-generate key
-    key = aes.generate_key()
-    print(f"\n  [Auto-generated Key]: {key.hex().upper()}")
+    key = generate_key()
+    print(f"\n  Key: {key.hex().upper()}")
 
     while True:
-        print("\nOptions:")
-        print("  1. Encrypt")
+        print("\n  1. Encrypt")
         print("  2. Decrypt")
-        print("  3. Show all 11 round keys")
+        print("  3. Show round keys")
         print("  4. Generate new key")
-        print("  0. Back to Main Menu")
+        print("  0. Back")
+
         choice = input("\nSelect: ").strip()
 
         if choice == "0":
             break
-
         elif choice == "1":
-            pt_str = input("  Enter plaintext: ").strip()
+            pt_str = input("  Plaintext: ").strip()
             pt_bytes = pt_str.encode("utf-8")
-            ct = aes.encrypt(pt_bytes, key)
-            print(f"\n  Plaintext  (hex): {pt_bytes.hex().upper()}")
+            ct = encrypt(pt_bytes, key)
+            print(f"  Plaintext  (hex): {pt_bytes.hex().upper()}")
             print(f"  Ciphertext (hex): {ct.hex().upper()}")
-            print(f"  Ciphertext (b64): {__import__('base64').b64encode(ct).decode()}")
-
         elif choice == "2":
-            ct_hex = input("  Enter ciphertext (hex): ").strip().replace(" ", "")
+            ct_hex = input("  Ciphertext (hex): ").strip().replace(" ", "")
             try:
                 ct = bytes.fromhex(ct_hex)
-                pt = aes.decrypt(ct, key)
-                print(f"\n  Ciphertext (hex): {ct.hex().upper()}")
-                print(f"  Plaintext       : {pt.decode('utf-8', errors='replace')}")
+                pt = decrypt(ct, key)
+                print(f"  Plaintext: {pt.decode('utf-8', errors='replace')}")
             except Exception as e:
                 print(f"  Error: {e}")
-
         elif choice == "3":
-            aes.display_round_keys(key)
-
+            show_round_keys(key)
         elif choice == "4":
-            key = aes.generate_key()
-            print(f"\n  [New Key Generated]: {key.hex().upper()}")
-
+            key = generate_key()
+            print(f"  New Key: {key.hex().upper()}")
         else:
             print("  Invalid option.")
 
