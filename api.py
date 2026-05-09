@@ -1,17 +1,15 @@
-import fastapi
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import base64
 
-# Import algorithms
-from classical.substitution_cipher import SubstitutionCipher
-from classical.double_transposition import DoubleTransposition
-from symmetric.des import DES, bits_to_int
-from symmetric.aes import AES, state_to_bytes
-from public_key.rsa import RSA
-from public_key.ecc import get_small_demo_curve, get_secp256k1, get_p256, EllipticCurve
+import classical.substitution_cipher as sub_mod
+import classical.double_transposition as dt_mod
+import symmetric.des as des_mod
+import symmetric.aes as aes_mod
+import public_key.rsa as rsa_mod
+from public_key.ecc import get_small_demo_curve, get_secp256k1, get_p256, ECPoint
 
 app = FastAPI(title="Kryptos API")
 
@@ -66,10 +64,7 @@ class AuthRequest(BaseModel):
     username: str
     password: str
 
-# ======== GLOBAL STATE (for convenience) ========
-rsa_instance = RSA()
-
-# Simple in-memory user database
+# ======== GLOBAL STATE ========
 users_db: Dict[str, str] = {}
 
 # ======== AUTHENTICATION ========
@@ -89,44 +84,38 @@ def login(req: AuthRequest):
 # ======== CLASSICAL ========
 @app.post("/api/classical/substitution/encrypt")
 def sub_encrypt(req: SubstitutionRequest):
-    sc = SubstitutionCipher()
     try:
-        ct = sc.encrypt(req.text, req.key)
-        freq = sc.frequency_analysis(ct)
+        ct = sub_mod.encrypt(req.text, req.key)
+        freq = sub_mod.frequency_analysis(ct)
         return {"ciphertext": ct, "frequency": freq}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/classical/substitution/decrypt")
 def sub_decrypt(req: SubstitutionRequest):
-    sc = SubstitutionCipher()
     try:
-        pt = sc.decrypt(req.text, req.key)
-        freq = sc.frequency_analysis(req.text)
+        pt = sub_mod.decrypt(req.text, req.key)
+        freq = sub_mod.frequency_analysis(req.text)
         return {"plaintext": pt, "frequency": freq}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/classical/transposition/encrypt")
 def trans_encrypt(req: TranspositionRequest):
-    dt = DoubleTransposition()
     try:
-        # Use string keywords
-        ct, k1, k2 = dt.encrypt(req.text, None, None, keyword1=req.key1, keyword2=req.key2)
-        freq = dt.frequency_analysis(ct)
+        ct = dt_mod.encrypt(req.text, req.key1, req.key2)
+        freq = dt_mod.frequency_analysis(ct)
+        k1 = dt_mod.keyword_to_order(req.key1)
+        k2 = dt_mod.keyword_to_order(req.key2)
         return {"ciphertext": ct, "key1_perm": k1, "key2_perm": k2, "frequency": freq}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/classical/transposition/decrypt")
 def trans_decrypt(req: TranspositionRequest):
-    dt = DoubleTransposition()
     try:
-        k1 = dt.keyword_to_permutation(req.key1)
-        k2 = dt.keyword_to_permutation(req.key2)
-        # Without exact length, it strips trailing Xs
-        pt = dt.decrypt(req.text, k1, k2)
-        freq = dt.frequency_analysis(req.text)
+        pt = dt_mod.decrypt(req.text, req.key1, req.key2)
+        freq = dt_mod.frequency_analysis(req.text)
         return {"plaintext": pt, "frequency": freq}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -134,17 +123,11 @@ def trans_decrypt(req: TranspositionRequest):
 # ======== SYMMETRIC ========
 @app.post("/api/symmetric/des/encrypt")
 def des_encrypt(req: SymmetricRequest):
-    des = DES()
-    key_bytes = des.generate_key()
+    key_bytes = des_mod.generate_key()
     try:
-        ct = des.encrypt(req.text.encode('utf-8'), key_bytes)
-        
-        # gather subkeys
-        subkeys = des._subkeys
-        subkeys_hex = []
-        for sk in subkeys:
-            subkeys_hex.append(f"{bits_to_int(sk):012X}")
-            
+        ct = des_mod.encrypt(req.text.encode("utf-8"), key_bytes)
+        subkeys = des_mod.generate_subkeys(key_bytes)
+        subkeys_hex = [f"{des_mod.bits_to_int(sk):012X}" for sk in subkeys]
         return {
             "ciphertext_hex": ct.hex().upper(),
             "key_hex": key_bytes.hex().upper(),
@@ -155,28 +138,21 @@ def des_encrypt(req: SymmetricRequest):
 
 @app.post("/api/symmetric/des/decrypt")
 def des_decrypt(req: SymmetricDecryptRequest):
-    des = DES()
     try:
         key_bytes = bytes.fromhex(req.key_hex)
         ct_bytes = bytes.fromhex(req.ciphertext_hex)
-        pt = des.decrypt(ct_bytes, key_bytes)
-        return {"plaintext": pt.decode('utf-8', errors='replace')}
+        pt = des_mod.decrypt(ct_bytes, key_bytes)
+        return {"plaintext": pt.decode("utf-8", errors="replace")}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/symmetric/aes/encrypt")
 def aes_encrypt(req: SymmetricRequest):
-    aes = AES()
-    key_bytes = aes.generate_key()
+    key_bytes = aes_mod.generate_key()
     try:
-        ct = aes.encrypt(req.text.encode('utf-8'), key_bytes)
-        # gather round keys
-        round_keys = aes._round_keys
-        rkeys_hex = []
-        for rk in round_keys:
-            rk_bytes = state_to_bytes(rk)
-            rkeys_hex.append(rk_bytes.hex().upper())
-            
+        ct = aes_mod.encrypt(req.text.encode("utf-8"), key_bytes)
+        round_keys = aes_mod.key_expansion(key_bytes)
+        rkeys_hex = [aes_mod.state_to_bytes(rk).hex().upper() for rk in round_keys]
         return {
             "ciphertext_hex": ct.hex().upper(),
             "key_hex": key_bytes.hex().upper(),
@@ -187,24 +163,22 @@ def aes_encrypt(req: SymmetricRequest):
 
 @app.post("/api/symmetric/aes/decrypt")
 def aes_decrypt(req: SymmetricDecryptRequest):
-    aes = AES()
     try:
         key_bytes = bytes.fromhex(req.key_hex)
         ct_bytes = bytes.fromhex(req.ciphertext_hex)
-        pt = aes.decrypt(ct_bytes, key_bytes)
-        return {"plaintext": pt.decode('utf-8', errors='replace')}
+        pt = aes_mod.decrypt(ct_bytes, key_bytes)
+        return {"plaintext": pt.decode("utf-8", errors="replace")}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ======== PUBLIC KEY ========
+# ======== PUBLIC KEY — RSA ========
 @app.post("/api/public/rsa/generate")
 def rsa_generate(req: RSAGenRequest):
     try:
-        pub, priv = rsa_instance.generate_keys(req.bits)
-        # Return as strings to avoid JS Number precision loss
+        rsa_mod.generate_keys(req.bits)
         return {
-            "public_key": {"n": str(pub["n"]), "e": str(pub["e"])},
-            "private_key": {"n": str(priv["n"]), "d": str(priv["d"])}
+            "public_key":  {"n": str(rsa_mod.n), "e": str(rsa_mod.e)},
+            "private_key": {"n": str(rsa_mod.n), "d": str(rsa_mod.d)}
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -212,7 +186,12 @@ def rsa_generate(req: RSAGenRequest):
 @app.post("/api/public/rsa/encrypt")
 def rsa_encrypt(req: RSAEncryptRequest):
     try:
-        ct = rsa_instance.encrypt(req.text, int(req.n), int(req.e))
+        n_val = int(req.n)
+        e_val = int(req.e)
+        m = rsa_mod.string_to_int(req.text)
+        if m >= n_val:
+            raise ValueError("Message too long for this key size.")
+        ct = pow(m, e_val, n_val)
         return {"ciphertext": str(ct)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -220,12 +199,15 @@ def rsa_encrypt(req: RSAEncryptRequest):
 @app.post("/api/public/rsa/decrypt")
 def rsa_decrypt(req: RSADecryptRequest):
     try:
-        pt = rsa_instance.decrypt(int(req.ciphertext), int(req.n), int(req.d))
+        n_val = int(req.n)
+        d_val = int(req.d)
+        m = pow(int(req.ciphertext), d_val, n_val)
+        pt = rsa_mod.int_to_string(m)
         return {"plaintext": pt}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ======== ECC ========
+# ======== PUBLIC KEY — ECC ========
 def get_curve(name: str):
     if name == "Demo":
         return get_small_demo_curve()
@@ -251,7 +233,6 @@ def ecc_generate(req: ECCGenRequest):
 def ecc_ecdh(req: ECCECDHRequest):
     try:
         curve = get_curve(req.curve_name)
-        from public_key.ecc import ECPoint
         other_Q = ECPoint(req.other_public_x, req.other_public_y)
         shared = curve.ecdh_shared_key(req.private_key, other_Q)
         return {
@@ -263,4 +244,4 @@ def ecc_ecdh(req: ECCECDHRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api:app", host="12 multi", port=8000, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
