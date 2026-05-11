@@ -1,9 +1,8 @@
-
-
-
-
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { ShieldCheck, Server, KeySquare, Key, Lock, Unlock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useFlow } from "@/context/FlowContext";
-
 export function PublicKeyModule() {
   const [activeTab, setActiveTab] = useState<"rsa" | "ecc">("rsa");
 
