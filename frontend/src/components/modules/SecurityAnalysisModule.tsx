@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { Activity, ShieldAlert, Cpu, BarChart3, Clock, Loader2 } from "lucide-react";
+import { Activity, ShieldAlert, Cpu, BarChart3, Clock, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 const SECURITY_DATA = [

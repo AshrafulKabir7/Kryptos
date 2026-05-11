@@ -112,6 +112,7 @@ function SubstitutionCipher() {
   const [key, setKey] = useState("QWERTYUIOPASDFGHJKLZXCVBNM");
   const [result, setResult] = useState("");
   const [frequency, setFrequency] = useState<Record<string, number> | null>(null);
+  const [lastAction, setLastAction] = useState<string>("");
   const [attackText, setAttackText] = useState("");
   const [attackResult, setAttackResult] = useState<any>(null);
   const { triggerFlow } = useFlow();
