@@ -53,6 +53,7 @@ function RSAAlgorithm() {
   const [plaintext, setPlaintext] = useState("");
   const [ciphertext, setCiphertext] = useState("");
   const [decryptedText, setDecryptedText] = useState("");
+  const [attackResult, setAttackResult] = useState<any>(null);
   const { triggerFlow } = useFlow();
 
   const handleGenerate = async () => {
@@ -62,8 +63,24 @@ function RSAAlgorithm() {
       setKeys(res.data);
       setCiphertext("");
       setDecryptedText("");
+      setAttackResult(null);
     } catch (err: any) {
       alert("Error: " + err);
+    }
+  };
+
+  const handleAttack = async () => {
+    if (!keys) return alert("Generate keys first!");
+    triggerFlow("rsa", "decrypt");
+    setAttackResult({ loading: true });
+    try {
+      const res = await api.post(`/public/rsa/attack`, { 
+        n: keys.public_key.n, bit_size: parseInt(bits)
+      });
+      setAttackResult({ loading: false, data: res.data });
+    } catch (err: any) {
+      setAttackResult({ loading: false });
+      alert("Attack Error: " + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -134,6 +151,33 @@ function RSAAlgorithm() {
                 <span className="select-all cursor-pointer hover:text-white transition-colors">{keys.private_key.d}</span>
               </div>
             </div>
+
+            {/* Factorization Attack Button */}
+            <div className="pt-2 border-t border-green-500/20">
+              <button onClick={handleAttack} disabled={attackResult?.loading} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold uppercase tracking-widest text-[10px] py-2 rounded transition-all flex items-center justify-center gap-2">
+                <Unlock className="w-3 h-3" /> {attackResult?.loading ? "Running Factorization..." : "Run Factorization Attack (Demo)"}
+              </button>
+            </div>
+
+            {/* Attack Result */}
+            {attackResult?.data && (
+              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="bg-red-500/10 p-4 rounded-lg border border-red-500/30 mt-2">
+                {attackResult.data.error ? (
+                  <div className="text-red-400 text-xs font-mono">{attackResult.data.error} (Took {attackResult.data.time_ms.toFixed(2)}ms)</div>
+                ) : (
+                  <>
+                    <div className="text-[9px] text-red-500 font-bold uppercase tracking-widest mb-2">Attack Success! Recovered Factors:</div>
+                    <div className="font-mono text-[10px] text-red-300 break-all leading-relaxed">
+                      <span className="text-red-500">p = </span>{attackResult.data.p}
+                    </div>
+                    <div className="font-mono text-[10px] text-red-300 break-all leading-relaxed mt-1">
+                      <span className="text-red-500">q = </span>{attackResult.data.q}
+                    </div>
+                    <div className="text-[9px] text-slate-400 mt-2 text-right">Time: {attackResult.data.time_ms.toFixed(2)}ms</div>
+                  </>
+                )}
+              </motion.div>
+            )}
           </motion.div>
         )}
       </div>

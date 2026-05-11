@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { RefreshCw, Repeat, ShieldBan, ShieldCheck, BarChart3 } from "lucide-react";
+import { RefreshCw, Repeat, ShieldBan, ShieldCheck, BarChart3, Unlock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFlow } from "@/context/FlowContext";
 
@@ -112,7 +112,8 @@ function SubstitutionCipher() {
   const [key, setKey] = useState("QWERTYUIOPASDFGHJKLZXCVBNM");
   const [result, setResult] = useState("");
   const [frequency, setFrequency] = useState<Record<string, number> | null>(null);
-  const [lastAction, setLastAction] = useState<string>("");
+  const [attackText, setAttackText] = useState("");
+  const [attackResult, setAttackResult] = useState<any>(null);
   const { triggerFlow } = useFlow();
 
   const handleAction = async (action: "encrypt" | "decrypt") => {
@@ -122,6 +123,20 @@ function SubstitutionCipher() {
       setResult(action === "encrypt" ? res.data.ciphertext : res.data.plaintext);
       setFrequency(res.data.frequency || null);
       setLastAction(action);
+      setAttackResult(null); // Clear attack result if we do standard enc/dec
+    } catch (err: any) {
+      alert("Error: " + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  const handleAttack = async () => {
+    if (!attackText) return alert("Please enter ciphertext to attack");
+    triggerFlow("substitution", "decrypt");
+    try {
+      const res = await api.post(`/classical/substitution/attack`, { ciphertext: attackText });
+      setAttackResult(res.data);
+      setResult(""); // Clear standard result
+      setLastAction("attack");
     } catch (err: any) {
       alert("Error: " + (err.response?.data?.detail || err.message));
     }
@@ -178,9 +193,34 @@ function SubstitutionCipher() {
           </div>
         </div>
 
+        {/* Attack Side */}
+        <div className="space-y-6 bg-red-500/5 p-6 rounded-xl border border-red-500/20">
+          <div>
+            <div className="section-label flex items-center gap-2 text-red-500"><Unlock className="w-4 h-4" /> Brute Force Attack (Frequency Analysis)</div>
+            <p className="text-[10px] text-slate-400 font-mono mb-3">Paste a long ciphertext. The system will attempt to guess the key based on standard English letter frequencies.</p>
+            <textarea placeholder="Enter ciphertext to attack..." value={attackText} onChange={(e) => setAttackText(e.target.value)} className="textarea-dark h-24 mb-4 border-red-500/30 focus:border-red-500" />
+            <button onClick={handleAttack} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold uppercase tracking-widest text-xs py-3 rounded transition-all flex items-center justify-center gap-2">
+              <Unlock className="w-4 h-4" /> Run Frequency Attack
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8">
+
         {/* Output Side */}
         <div className="bg-[#050807] rounded-xl p-6 border border-green-500/10 flex flex-col">
-          {result ? (
+          {lastAction === 'attack' && attackResult ? (
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                <div className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-1">Guessed Key (from Frequency Analysis)</div>
+                <div className="font-mono text-xl text-white tracking-widest mb-4">{attackResult.guessed_key}</div>
+                
+                <div className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-1">Decrypted Output</div>
+                <div className="result-box min-h-[80px] bg-black/40 text-slate-300">{attackResult.plaintext}</div>
+              </div>
+            </div>
+          ) : result ? (
             <div className="flex-1 flex flex-col gap-4">
               <div>
                 <div className="section-label text-green-500">{lastAction === 'encrypt' ? 'Output (Encryption): Ciphertext' : 'Output (Decryption): Original Plaintext'}</div>

@@ -10,11 +10,13 @@ import { FlowPanel } from '@/components/FlowPanel'
 import { ClassicalModule } from '@/components/modules/ClassicalModule'
 import { SymmetricModule } from '@/components/modules/SymmetricModule'
 import { PublicKeyModule } from '@/components/modules/PublicKeyModule'
+import { SecurityAnalysisModule } from '@/components/modules/SecurityAnalysisModule'
 
 const navItems = [
   { id: 'classical', label: 'Classical', icon: RefreshCw, desc: 'Substitution & Transposition' },
   { id: 'symmetric', label: 'Symmetric', icon: LinkIcon, desc: 'AES-128 & DES Block Ciphers' },
   { id: 'public', label: 'Public Key', icon: Key, desc: 'RSA & Elliptic Curve ECDH' },
+  { id: 'analysis', label: 'Analysis', icon: BarChart3, desc: 'Security & Performance' },
 ];
 
 export default function Dashboard() {
@@ -225,6 +227,14 @@ function DashboardInner() {
                   transition={{ duration: 0.3, type: "spring", bounce: 0.15 }}
                 >
                   <PublicKeyModule />
+                </motion.div>
+              )}
+              {activeModule === "analysis" && (
+                <motion.div key="analysis"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3, type: "spring", bounce: 0.15 }}
+                >
+                  <SecurityAnalysisModule />
                 </motion.div>
               )}
             </AnimatePresence>
