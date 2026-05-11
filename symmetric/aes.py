@@ -70,27 +70,65 @@ def state_to_bytes(state):
     return bytes(out)
 
 def sub_bytes(state):
-    return [[SBOX[state[r][c]] for c in range(4)] for r in range(4)]
+    new_state = []
+    for r in range(4):
+        new_row = []
+        for c in range(4):
+            new_row.append(SBOX[state[r][c]])
+        new_state.append(new_row)
+    return new_state
 
 def inv_sub_bytes(state):
-    return [[INV_SBOX[state[r][c]] for c in range(4)] for r in range(4)]
+    new_state = []
+    for r in range(4):
+        new_row = []
+        for c in range(4):
+            new_row.append(INV_SBOX[state[r][c]])
+        new_state.append(new_row)
+    return new_state
 
 def shift_rows(state):
-    new_state = [row[:] for row in state]
+    new_state = []
+    for r in range(4):
+        new_row = []
+        for c in range(4):
+            new_row.append(state[r][c])
+        new_state.append(new_row)
+        
     for r in range(1, 4):
-        new_state[r] = state[r][r:] + state[r][:r]
+        row = state[r]
+        shifted_row = []
+        for i in range(4):
+            shifted_row.append(row[(i + r) % 4])
+        new_state[r] = shifted_row
     return new_state
 
 def inv_shift_rows(state):
-    new_state = [row[:] for row in state]
+    new_state = []
+    for r in range(4):
+        new_row = []
+        for c in range(4):
+            new_row.append(state[r][c])
+        new_state.append(new_row)
+        
     for r in range(1, 4):
-        new_state[r] = state[r][4-r:] + state[r][:4-r]
+        row = state[r]
+        shifted_row = []
+        for i in range(4):
+            shifted_row.append(row[(i - r) % 4])
+        new_state[r] = shifted_row
     return new_state
 
 def mix_columns(state):
-    new_state = [[0]*4 for _ in range(4)]
+    new_state = []
+    for r in range(4):
+        new_state.append([0, 0, 0, 0])
+        
     for c in range(4):
-        col = [state[r][c] for r in range(4)]
+        col = []
+        for r in range(4):
+            col.append(state[r][c])
+            
         new_state[0][c] = gmul(col[0],2) ^ gmul(col[1],3) ^ col[2]          ^ col[3]
         new_state[1][c] = col[0]          ^ gmul(col[1],2) ^ gmul(col[2],3) ^ col[3]
         new_state[2][c] = col[0]          ^ col[1]          ^ gmul(col[2],2) ^ gmul(col[3],3)
@@ -98,9 +136,15 @@ def mix_columns(state):
     return new_state
 
 def inv_mix_columns(state):
-    new_state = [[0]*4 for _ in range(4)]
+    new_state = []
+    for r in range(4):
+        new_state.append([0, 0, 0, 0])
+        
     for c in range(4):
-        col = [state[r][c] for r in range(4)]
+        col = []
+        for r in range(4):
+            col.append(state[r][c])
+            
         new_state[0][c] = gmul(col[0],0x0e)^gmul(col[1],0x0b)^gmul(col[2],0x0d)^gmul(col[3],0x09)
         new_state[1][c] = gmul(col[0],0x09)^gmul(col[1],0x0e)^gmul(col[2],0x0b)^gmul(col[3],0x0d)
         new_state[2][c] = gmul(col[0],0x0d)^gmul(col[1],0x09)^gmul(col[2],0x0e)^gmul(col[3],0x0b)
@@ -108,23 +152,59 @@ def inv_mix_columns(state):
     return new_state
 
 def add_round_key(state, round_key):
-    return [[state[r][c] ^ round_key[r][c] for c in range(4)] for r in range(4)]
+    new_state = []
+    for r in range(4):
+        new_row = []
+        for c in range(4):
+            val = state[r][c] ^ round_key[r][c]
+            new_row.append(val)
+        new_state.append(new_row)
+    return new_state
 
 def key_expansion(key):
-    W = [list(key[4*i:4*i+4]) for i in range(4)]
+    W = []
+    for i in range(4):
+        word = []
+        for j in range(4):
+            word.append(key[4*i + j])
+        W.append(word)
+        
     for i in range(4, 44):
-        temp = W[i-1][:]
+        temp = []
+        for b in W[i-1]:
+            temp.append(b)
+            
         if i % 4 == 0:
-            temp = temp[1:] + temp[:1]
-            temp = [SBOX[b] for b in temp]
-            temp[0] ^= RCON[i // 4 - 1]
-        W.append([W[i-4][j] ^ temp[j] for j in range(4)])
+            # RotWord
+            shifted = []
+            for j in range(1, 4):
+                shifted.append(temp[j])
+            shifted.append(temp[0])
+            temp = shifted
+            
+            # SubWord
+            subbed = []
+            for b in temp:
+                subbed.append(SBOX[b])
+            temp = subbed
+            
+            # Rcon
+            temp[0] = temp[0] ^ RCON[(i // 4) - 1]
+            
+        new_word = []
+        for j in range(4):
+            new_word.append(W[i-4][j] ^ temp[j])
+        W.append(new_word)
+        
     round_keys = []
     for rk in range(11):
-        rk_bytes = []
+        rk_bytes = bytearray()
         for w in range(4):
-            rk_bytes.extend(W[rk * 4 + w])
+            word_idx = rk * 4 + w
+            for b in W[word_idx]:
+                rk_bytes.append(b)
         round_keys.append(bytes_to_state(bytes(rk_bytes)))
+        
     return round_keys
 
 def encrypt_block(block, round_keys):
