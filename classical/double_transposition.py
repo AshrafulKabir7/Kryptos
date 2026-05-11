@@ -10,11 +10,13 @@ PAD = 'X'
 
 
 def parse_number_key(key_str):
-    """
-    Parses a comma-separated string of 1-based indices into a list of integers.
-    Example: '3, 5, 1, 4, 2' -> [3, 5, 1, 4, 2]
-    """
-    return [int(x.strip()) for x in key_str.split(',')]
+    result = []
+    parts = key_str.split(',')
+    for part in parts:
+        clean_part = part.strip()
+        number = int(clean_part)
+        result.append(number)
+    return result
 
 
 def encrypt(plaintext, row_key_str, col_key_str):
@@ -29,14 +31,19 @@ def encrypt(plaintext, row_key_str, col_key_str):
     n_cols = len(col_perm)
     block_size = n_rows * n_cols
     
-    text = "".join(ch for ch in plaintext.upper() if ch.isalpha())
+    text_list = []
+    for ch in plaintext.upper():
+        if ch.isalpha():
+            text_list.append(ch)
+    text = "".join(text_list)
+    
     print(f"\n  Plaintext       : {text}")
 
-    pad_needed = (block_size - (len(text) % block_size)) % block_size
-    text += PAD * pad_needed
-
-    flat_perm = [(row_perm[r]-1) * n_cols + (col_perm[c]-1) 
-                 for r in range(n_rows) for c in range(n_cols)]
+    remainder = len(text) % block_size
+    if remainder != 0:
+        pad_needed = block_size - remainder
+        for _ in range(pad_needed):
+            text += PAD
 
     ciphertext = ""
     original_grids = []
@@ -44,11 +51,34 @@ def encrypt(plaintext, row_key_str, col_key_str):
 
     for i in range(0, len(text), block_size):
         block = text[i:i+block_size]
-        new_block = "".join(block[idx] for idx in flat_perm)
-        ciphertext += new_block
         
-        original_grids.append([list(block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
-        permuted_grids.append([list(new_block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+        # Build original matrix explicitly
+        orig_grid = []
+        for r in range(n_rows):
+            row_data = []
+            for c in range(n_cols):
+                index = r * n_cols + c
+                row_data.append(block[index])
+            orig_grid.append(row_data)
+        
+        # Build permuted matrix explicitly
+        perm_grid = []
+        for new_r in range(n_rows):
+            orig_r = row_perm[new_r] - 1
+            new_row = []
+            for new_c in range(n_cols):
+                orig_c = col_perm[new_c] - 1
+                char = orig_grid[orig_r][orig_c]
+                new_row.append(char)
+            perm_grid.append(new_row)
+            
+        original_grids.append(orig_grid)
+        permuted_grids.append(perm_grid)
+        
+        # Read out the permuted matrix to build ciphertext
+        for r in range(n_rows):
+            for c in range(n_cols):
+                ciphertext += perm_grid[r][c]
             
     return {
         "result": ciphertext,
@@ -75,25 +105,50 @@ def decrypt(ciphertext, row_key_str, col_key_str, original_len=None):
         print(f"  Error: Ciphertext length must be a multiple of the block size ({block_size}).")
         return None
     
-    flat_perm = [(row_perm[r]-1) * n_cols + (col_perm[c]-1) 
-                 for r in range(n_rows) for c in range(n_cols)]
-
     plaintext = ""
     original_grids = [] 
     permuted_grids = [] 
 
     for i in range(0, len(ciphertext), block_size):
         block = ciphertext[i:i+block_size]
-        orig_block = [""] * block_size
-        for new_idx, orig_idx in enumerate(flat_perm):
-            orig_block[orig_idx] = block[new_idx]
-        recovered_str = "".join(orig_block)
-        plaintext += recovered_str
         
-        original_grids.append([list(block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
-        permuted_grids.append([list(recovered_str[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+        # Build permuted matrix (this is what we received)
+        perm_grid = []
+        for r in range(n_rows):
+            row_data = []
+            for c in range(n_cols):
+                index = r * n_cols + c
+                row_data.append(block[index])
+            perm_grid.append(row_data)
             
-    final_plaintext = plaintext[:original_len] if original_len else plaintext.rstrip(PAD)
+        # Reconstruct original matrix
+        orig_grid = []
+        for r in range(n_rows):
+            empty_row = []
+            for c in range(n_cols):
+                empty_row.append("")
+            orig_grid.append(empty_row)
+            
+        # Fill the original matrix
+        for new_r in range(n_rows):
+            orig_r = row_perm[new_r] - 1
+            for new_c in range(n_cols):
+                orig_c = col_perm[new_c] - 1
+                char = perm_grid[new_r][new_c]
+                orig_grid[orig_r][orig_c] = char
+                
+        original_grids.append(perm_grid)
+        permuted_grids.append(orig_grid)
+        
+        # Read out the reconstructed matrix
+        for r in range(n_rows):
+            for c in range(n_cols):
+                plaintext += orig_grid[r][c]
+            
+    if original_len is not None:
+        final_plaintext = plaintext[:original_len]
+    else:
+        final_plaintext = plaintext.rstrip(PAD)
     
     return {
         "result": final_plaintext,
@@ -104,12 +159,22 @@ def decrypt(ciphertext, row_key_str, col_key_str, original_len=None):
 
 
 def frequency_analysis(text):
-    letters = [ch for ch in text.upper() if ch.isalpha()]
+    letters = []
+    for ch in text.upper():
+        if ch.isalpha():
+            letters.append(ch)
+    
     total = len(letters)
     if total == 0:
         return {}
-    return {ch: (letters.count(ch), round(letters.count(ch) / total * 100, 2))
-            for ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+    
+    result = {}
+    for ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        count = letters.count(ch)
+        percentage = round(count / total * 100, 2)
+        result[ch] = (count, percentage)
+        
+    return result
 
 
 def print_frequency_table(text, label="Text"):
@@ -156,7 +221,10 @@ def run():
             kw1 = input("  Row permutation (e.g., 3,5,1,4,2) : ").strip()
             kw2 = input("  Column permutation (e.g., 1,3,2)  : ").strip()
             orig = input("  Original length (Enter to skip)   : ").strip()
-            orig_len = int(orig) if orig.isdigit() else None
+            if orig.isdigit():
+                orig_len = int(orig)
+            else:
+                orig_len = None
             res = decrypt(ciphertext, kw1, kw2, orig_len)
             if res:
                 print(f"\n  Plaintext: {res['result']}")
