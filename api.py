@@ -103,20 +103,42 @@ def sub_decrypt(req: SubstitutionRequest):
 @app.post("/api/classical/transposition/encrypt")
 def trans_encrypt(req: TranspositionRequest):
     try:
-        ct = dt_mod.encrypt(req.text, req.key1, req.key2)
-        freq = dt_mod.frequency_analysis(ct)
-        k1 = dt_mod.keyword_to_order(req.key1)
-        k2 = dt_mod.keyword_to_order(req.key2)
-        return {"ciphertext": ct, "key1_perm": k1, "key2_perm": k2, "frequency": freq}
+        res = dt_mod.encrypt(req.text, req.key1, req.key2)
+        if not res:
+            raise ValueError("Encryption failed. Please ensure keys are comma-separated numbers.")
+        freq = dt_mod.frequency_analysis(res["result"])
+        k1 = dt_mod.parse_number_key(req.key1)
+        k2 = dt_mod.parse_number_key(req.key2)
+        return {
+            "ciphertext": res["result"], 
+            "key1_perm": k1, 
+            "key2_perm": k2, 
+            "frequency": freq,
+            "original_grids": res["original_grids"],
+            "permuted_grids": res["permuted_grids"],
+            "dimensions": res["dimensions"]
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/classical/transposition/decrypt")
 def trans_decrypt(req: TranspositionRequest):
     try:
-        pt = dt_mod.decrypt(req.text, req.key1, req.key2)
+        res = dt_mod.decrypt(req.text, req.key1, req.key2)
+        if not res:
+            raise ValueError("Decryption failed. Please ensure keys are comma-separated numbers.")
         freq = dt_mod.frequency_analysis(req.text)
-        return {"plaintext": pt, "frequency": freq}
+        k1 = dt_mod.parse_number_key(req.key1)
+        k2 = dt_mod.parse_number_key(req.key2)
+        return {
+            "plaintext": res["result"], 
+            "key1_perm": k1, 
+            "key2_perm": k2, 
+            "frequency": freq,
+            "original_grids": res["original_grids"],
+            "permuted_grids": res["permuted_grids"],
+            "dimensions": res["dimensions"]
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

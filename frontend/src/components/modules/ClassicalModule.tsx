@@ -201,6 +201,51 @@ function SubstitutionCipher() {
   );
 }
 
+function MatrixVisualizer({ original, permuted, dimensions }: any) {
+  if (!original || original.length === 0 || !dimensions) return null;
+
+  return (
+    <div className="mt-6">
+      <div className="section-label text-green-500 mb-3">Matrix Visualization</div>
+      <div className="space-y-6 max-h-[300px] overflow-y-auto pr-2">
+        {original.map((origGrid: string[][], idx: number) => (
+          <div key={idx} className="flex flex-col md:flex-row gap-6 items-center justify-center p-4 bg-[#0a110e] border border-white/5 rounded-xl">
+            {/* Original Grid */}
+            <div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center mb-2">Original Matrix</div>
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${dimensions.cols}, minmax(0, 1fr))` }}>
+                {origGrid.flat().map((char: string, i: number) => (
+                  <div key={i} className="w-7 h-7 flex items-center justify-center bg-white/[0.02] border border-white/10 rounded text-xs font-mono text-slate-400">
+                    {char}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Arrow */}
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-slate-500 font-mono mb-1">Permute</span>
+              <Repeat className="w-4 h-4 text-green-500/50" />
+            </div>
+
+            {/* Permuted Grid */}
+            <div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center mb-2">Permuted Matrix</div>
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${dimensions.cols}, minmax(0, 1fr))` }}>
+                {permuted[idx].flat().map((char: string, i: number) => (
+                  <div key={i} className="w-7 h-7 flex items-center justify-center bg-green-500/10 border border-green-500/30 rounded text-xs font-mono text-white font-bold shadow-[0_0_10px_rgba(34,197,94,0.1)]">
+                    {char}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DoubleTransposition() {
   const [text, setText] = useState("");
   const [key1, setKey1] = useState("FIRSTKEY");
@@ -208,6 +253,7 @@ function DoubleTransposition() {
   const [result, setResult] = useState("");
   const [frequency, setFrequency] = useState<Record<string, number> | null>(null);
   const [permKeys, setPermKeys] = useState<{ k1: number[] | null, k2: number[] | null }>({ k1: null, k2: null });
+  const [grids, setGrids] = useState<{ original: string[][][], permuted: string[][][], dimensions: any } | null>(null);
   const [lastAction, setLastAction] = useState<string>("");
   const { triggerFlow } = useFlow();
 
@@ -218,6 +264,11 @@ function DoubleTransposition() {
       setResult(action === "encrypt" ? res.data.ciphertext : res.data.plaintext);
       setFrequency(res.data.frequency || null);
       setPermKeys({ k1: res.data.key1_perm || null, k2: res.data.key2_perm || null });
+      setGrids({
+        original: res.data.original_grids || [],
+        permuted: res.data.permuted_grids || [],
+        dimensions: res.data.dimensions || null
+      });
       setLastAction(action);
     } catch (err: any) {
       alert("Error: " + (err.response?.data?.detail || err.message));
@@ -235,12 +286,12 @@ function DoubleTransposition() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="section-label">Input 2: First Permutation Key</div>
-              <input type="text" value={key1} onChange={(e) => setKey1(e.target.value.toUpperCase())} className="input-dark text-green-100" />
+              <div className="section-label">Input 2: Row Permutation (e.g. 3,5,1,4,2)</div>
+              <input type="text" value={key1} onChange={(e) => setKey1(e.target.value)} className="input-dark text-green-100" />
             </div>
             <div>
-              <div className="section-label">Input 3: Second Permutation Key</div>
-              <input type="text" value={key2} onChange={(e) => setKey2(e.target.value.toUpperCase())} className="input-dark text-green-100" />
+              <div className="section-label">Input 3: Column Permutation (e.g. 1,3,2)</div>
+              <input type="text" value={key2} onChange={(e) => setKey2(e.target.value)} className="input-dark text-green-100" />
             </div>
           </div>
           <div className="flex gap-4">
@@ -271,12 +322,15 @@ function DoubleTransposition() {
                   </div>
                   {permKeys.k2 && (
                     <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3">
-                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Key 2 Permutation</div>
+                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Column Permutation</div>
                       <div className="text-xs font-mono text-green-400 tracking-wider">[{permKeys.k2.join(', ')}]</div>
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Grid Visualizer */}
+              {grids && <MatrixVisualizer original={grids.original} permuted={grids.permuted} dimensions={grids.dimensions} />}
 
               {/* Frequency Analysis */}
               {frequency && <FrequencyChart frequency={frequency} />}

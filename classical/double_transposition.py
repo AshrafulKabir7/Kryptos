@@ -9,81 +9,98 @@ ENGLISH_FREQ = {
 PAD = 'X'
 
 
-def keyword_to_order(keyword):
-    keyword = keyword.upper()
-    n = len(keyword)
-    pairs = []
-    for i in range(n):
-        pairs.append((keyword[i], i))
-    pairs_sorted = sorted(pairs)
-    order = [0] * n
-    for rank, (letter, original_col) in enumerate(pairs_sorted):
-        order[original_col] = rank
-    return order
+def parse_number_key(key_str):
+    """
+    Parses a comma-separated string of 1-based indices into a list of integers.
+    Example: '3, 5, 1, 4, 2' -> [3, 5, 1, 4, 2]
+    """
+    return [int(x.strip()) for x in key_str.split(',')]
 
 
-def columnar_encrypt(text, order):
-    n_cols = len(order)
-    n_rows = (len(text) + n_cols - 1) // n_cols
-    pad_needed = n_rows * n_cols - len(text)
-    text = text.upper() + PAD * pad_needed
+def encrypt(plaintext, row_key_str, col_key_str):
+    try:
+        row_perm = parse_number_key(row_key_str)
+        col_perm = parse_number_key(col_key_str)
+    except ValueError:
+        print("  Error: Keys must be comma-separated numbers.")
+        return None
 
-    grid = []
-    for r in range(n_rows):
-        row = list(text[r * n_cols:(r + 1) * n_cols])
-        grid.append(row)
-
-    read_order = sorted(range(n_cols), key=lambda i: order[i])
-
-    result = []
-    for col in read_order:
-        for row in grid:
-            result.append(row[col])
-    return "".join(result)
-
-
-def columnar_decrypt(text, order, original_len=None):
-    n_cols = len(order)
-    length = original_len or len(text)
-    n_rows = (length + n_cols - 1) // n_cols
-    read_order = sorted(range(n_cols), key=lambda i: order[i])
-
-    col_data = {}
-    idx = 0
-    for col in read_order:
-        col_data[col] = list(text[idx:idx + n_rows])
-        idx += n_rows
-
-    recovered = "".join(col_data[c][r] for r in range(n_rows) for c in range(n_cols))
-    return recovered[:original_len] if original_len else recovered.rstrip(PAD)
-
-
-def encrypt(plaintext, keyword1, keyword2):
-    key1 = keyword_to_order(keyword1)
-    key2 = keyword_to_order(keyword2)
-
+    n_rows = len(row_perm)
+    n_cols = len(col_perm)
+    block_size = n_rows * n_cols
+    
     text = "".join(ch for ch in plaintext.upper() if ch.isalpha())
     print(f"\n  Plaintext       : {text}")
 
-    after_first = columnar_encrypt(text, key1)
-    print(f"  After round 1   : {after_first}")
+    pad_needed = (block_size - (len(text) % block_size)) % block_size
+    text += PAD * pad_needed
 
-    ciphertext = columnar_encrypt(after_first, key2)
-    print(f"  Ciphertext      : {ciphertext}")
-    return ciphertext
+    flat_perm = [(row_perm[r]-1) * n_cols + (col_perm[c]-1) 
+                 for r in range(n_rows) for c in range(n_cols)]
+
+    ciphertext = ""
+    original_grids = []
+    permuted_grids = []
+
+    for i in range(0, len(text), block_size):
+        block = text[i:i+block_size]
+        new_block = "".join(block[idx] for idx in flat_perm)
+        ciphertext += new_block
+        
+        original_grids.append([list(block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+        permuted_grids.append([list(new_block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+            
+    return {
+        "result": ciphertext,
+        "original_grids": original_grids,
+        "permuted_grids": permuted_grids,
+        "dimensions": {"rows": n_rows, "cols": n_cols}
+    }
 
 
-def decrypt(ciphertext, keyword1, keyword2, original_len=None):
-    key1 = keyword_to_order(keyword1)
-    key2 = keyword_to_order(keyword2)
+def decrypt(ciphertext, row_key_str, col_key_str, original_len=None):
+    try:
+        row_perm = parse_number_key(row_key_str)
+        col_perm = parse_number_key(col_key_str)
+    except ValueError:
+        print("  Error: Keys must be comma-separated numbers.")
+        return None
 
+    n_rows = len(row_perm)
+    n_cols = len(col_perm)
+    block_size = n_rows * n_cols
+    
     ciphertext = ciphertext.upper().replace(" ", "")
-    after_undo2 = columnar_decrypt(ciphertext, key2, original_len=len(ciphertext))
-    print(f"\n  After undoing round 2: {after_undo2}")
+    if len(ciphertext) % block_size != 0:
+        print(f"  Error: Ciphertext length must be a multiple of the block size ({block_size}).")
+        return None
+    
+    flat_perm = [(row_perm[r]-1) * n_cols + (col_perm[c]-1) 
+                 for r in range(n_rows) for c in range(n_cols)]
 
-    plaintext = columnar_decrypt(after_undo2, key1, original_len)
-    print(f"  Recovered plaintext  : {plaintext}")
-    return plaintext
+    plaintext = ""
+    original_grids = [] 
+    permuted_grids = [] 
+
+    for i in range(0, len(ciphertext), block_size):
+        block = ciphertext[i:i+block_size]
+        orig_block = [""] * block_size
+        for new_idx, orig_idx in enumerate(flat_perm):
+            orig_block[orig_idx] = block[new_idx]
+        recovered_str = "".join(orig_block)
+        plaintext += recovered_str
+        
+        original_grids.append([list(block[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+        permuted_grids.append([list(recovered_str[r * n_cols : (r + 1) * n_cols]) for r in range(n_rows)])
+            
+    final_plaintext = plaintext[:original_len] if original_len else plaintext.rstrip(PAD)
+    
+    return {
+        "result": final_plaintext,
+        "original_grids": original_grids,
+        "permuted_grids": permuted_grids,
+        "dimensions": {"rows": n_rows, "cols": n_cols}
+    }
 
 
 def frequency_analysis(text):
@@ -112,7 +129,7 @@ def print_frequency_table(text, label="Text"):
 
 def run():
     print("\n" + "=" * 55)
-    print("       DOUBLE TRANSPOSITION CIPHER")
+    print("       DOUBLE TRANSPOSITION CIPHER (MATRIX)")
     print("=" * 55)
 
     while True:
@@ -127,20 +144,22 @@ def run():
             break
 
         elif choice == "1":
-            plaintext = input("  Plaintext      : ").strip()
-            kw1 = input("  First keyword  : ").strip()
-            kw2 = input("  Second keyword : ").strip()
-            ct = encrypt(plaintext, kw1, kw2)
-            print(f"\n  Final Ciphertext: {ct}")
+            plaintext = input("  Plaintext                         : ").strip()
+            kw1 = input("  Row permutation (e.g., 3,5,1,4,2) : ").strip()
+            kw2 = input("  Column permutation (e.g., 1,3,2)  : ").strip()
+            res = encrypt(plaintext, kw1, kw2)
+            if res:
+                print(f"\n  Final Ciphertext: {res['result']}")
 
         elif choice == "2":
-            ciphertext = input("  Ciphertext     : ").strip()
-            kw1 = input("  First keyword  : ").strip()
-            kw2 = input("  Second keyword : ").strip()
-            orig = input("  Original length (Enter to skip): ").strip()
+            ciphertext = input("  Ciphertext                        : ").strip()
+            kw1 = input("  Row permutation (e.g., 3,5,1,4,2) : ").strip()
+            kw2 = input("  Column permutation (e.g., 1,3,2)  : ").strip()
+            orig = input("  Original length (Enter to skip)   : ").strip()
             orig_len = int(orig) if orig.isdigit() else None
-            pt = decrypt(ciphertext, kw1, kw2, orig_len)
-            print(f"\n  Plaintext: {pt}")
+            res = decrypt(ciphertext, kw1, kw2, orig_len)
+            if res:
+                print(f"\n  Plaintext: {res['result']}")
 
         elif choice == "3":
             text = input("  Enter text: ").strip()
