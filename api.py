@@ -400,7 +400,7 @@ def run_benchmark():
         results.append({"algorithm": "RSA-1024 decrypt", "category": "Public-Key", "key_size": "1024-bit", **res})
 
         # ECC
-        res = measure(ecc_mod.scalar_mul, 23, 1, 1, 15, (3, 10))
+        res = measure(ecc_mod.scalar_mul, 23, 1, 15, (3, 10))
         results.append({"algorithm": "ECC scalar multiply (mod 23)", "category": "Public-Key", "key_size": "~23-bit field", **res})
 
         return {"benchmark_results": results}
