@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { api } from "@/lib/api";
-import { ShieldCheck, Server, KeySquare, Key, Lock, Unlock } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
+
+
+
 import { useFlow } from "@/context/FlowContext";
 
 export function PublicKeyModule() {
@@ -333,6 +333,253 @@ function ECCAlgorithm() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+export function ECCAlgorithm() {
+  const [activeSubTab, setActiveSubTab] = useState<"keygen" | "ecdh">("keygen");
+
+  // State for Step 1
+  const [a, setA] = useState("1");
+  const [b, setB] = useState("1");
+  const [p, setP] = useState("23");
+  const [points, setPoints] = useState<any[]>([]);
+  
+  // State for Step 2
+  const [gx, setGx] = useState("");
+  const [gy, setGy] = useState("");
+  const [orderN, setOrderN] = useState<string | null>(null);
+
+  // State for Step 3 Keygen
+  const [d, setD] = useState("");
+  const [keyPair, setKeyPair] = useState<any>(null);
+
+  // State for Step 2 ECDH
+  const [privA, setPrivA] = useState("");
+  const [privB, setPrivB] = useState("");
+  const [ecdhResult, setEcdhResult] = useState<any>(null);
+
+  // Logs/Output
+  const [outputLog, setOutputLog] = useState<string[]>(["Complete steps to see output."]);
+
+  const addLog = (msg: string) => setOutputLog(prev => [...prev, msg]);
+
+  const handleFindPoints = async () => {
+    try {
+      const res = await api.post(`/public/ecc/points`, { 
+        p: parseInt(p), a: parseInt(a), b: parseInt(b) 
+      });
+      setPoints(res.data.points);
+      addLog(`Found ${res.data.points.length} points for curve y² = x³ + ${a}x + ${b} (mod ${p}).`);
+    } catch (err: any) { alert("Error: " + (err.response?.data?.detail || err.message)); }
+  };
+
+  const handleSetGenerator = async () => {
+    if (!gx || !gy) return alert("Please select a point or enter G.x and G.y");
+    try {
+      const res = await api.post(`/public/ecc/order`, { 
+        p: parseInt(p), a: parseInt(a), b: parseInt(b), Gx: parseInt(gx), Gy: parseInt(gy)
+      });
+      setOrderN(res.data.n.toString());
+      addLog(`Generator G = (${gx}, ${gy}) has Order n = ${res.data.n}.`);
+    } catch (err: any) { alert("Error: " + (err.response?.data?.detail || err.message)); }
+  };
+
+  const handleGenerateKey = async () => {
+    try {
+      const res = await api.post(`/public/ecc/keypair`, { 
+        p: parseInt(p), a: parseInt(a), b: parseInt(b), 
+        Gx: parseInt(gx), Gy: parseInt(gy),
+        n: orderN ? parseInt(orderN) : undefined,
+        private_key: d ? parseInt(d) : undefined
+      });
+      setKeyPair(res.data);
+      addLog(`Generated Key Pair. Private d = ${res.data.private_key}, Public Q = (${res.data.public_key.x}, ${res.data.public_key.y}).`);
+    } catch (err: any) { alert("Error: " + (err.response?.data?.detail || err.message)); }
+  };
+
+  const handleRunECDH = async () => {
+    if (!gx || !gy) return alert("Please set Generator G first!");
+    try {
+      // Auto-generate if blank, we can just pass some random if not provided, but backend requires ints.
+      // So if blank, we will generate them locally to pass, or let backend do it. Backend ecdh endpoint needs priv_A and priv_B.
+      // Let's generate random ones if blank.
+      let finalPrivA = privA ? parseInt(privA) : Math.floor(Math.random() * (parseInt(orderN || "20") - 2)) + 2;
+      let finalPrivB = privB ? parseInt(privB) : Math.floor(Math.random() * (parseInt(orderN || "20") - 2)) + 2;
+
+      setPrivA(finalPrivA.toString());
+      setPrivB(finalPrivB.toString());
+
+      const res = await api.post(`/public/ecc/ecdh`, { 
+        p: parseInt(p), a: parseInt(a), b: parseInt(b), 
+        Gx: parseInt(gx), Gy: parseInt(gy),
+        priv_A: finalPrivA, priv_B: finalPrivB
+      });
+      setEcdhResult(res.data);
+      addLog(`ECDH Success! Shared Secret = (${res.data.shared_secret.x}, ${res.data.shared_secret.y}).`);
+    } catch (err: any) { alert("Error: " + (err.response?.data?.detail || err.message)); }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Sub Tabs */}
+      <div className="flex gap-2">
+        <button onClick={() => setActiveSubTab("keygen")}
+          className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded ${activeSubTab === 'keygen' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-transparent border border-white/10 text-slate-400'}`}>
+          KEY GENERATION
+        </button>
+        <button onClick={() => setActiveSubTab("ecdh")}
+          className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded ${activeSubTab === 'ecdh' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-transparent border border-white/10 text-slate-400'}`}>
+          ECDH KEY EXCHANGE
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* LEFT COLUMN - STEPS */}
+        <div className="space-y-4">
+          
+          {/* STEP 1 */}
+          <div className="bg-[#0b100e] border border-green-500/10 p-5 rounded-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <span className="text-xs text-green-500 font-bold uppercase tracking-widest">STEP 1 - DEFINE THE CURVE</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono mb-4">Enter parameters for y² = x³ + ax + b (mod p)</p>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="text-[9px] text-slate-500 block mb-1">A</label>
+                <input value={a} onChange={e => setA(e.target.value)} className="input-dark w-full text-xs py-1" />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-500 block mb-1">B</label>
+                <input value={b} onChange={e => setB(e.target.value)} className="input-dark w-full text-xs py-1" />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-500 block mb-1">P (PRIME)</label>
+                <input value={p} onChange={e => setP(e.target.value)} className="input-dark w-full text-xs py-1" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleFindPoints} className="btn-outline border-green-500/20 hover:border-green-500/50 text-[10px] py-1.5 px-3">FIND ALL POINTS</button>
+            </div>
+          </div>
+
+          {/* STEP 2 */}
+          <div className="bg-[#0b100e] border border-green-500/10 p-5 rounded-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <span className="text-xs text-green-500 font-bold uppercase tracking-widest">STEP 2 - CHOOSE GENERATOR G</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono mb-4">Click a point in the output or enter coordinates.</p>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-[9px] text-slate-500 block mb-1">G.X</label>
+                <input value={gx} onChange={e => setGx(e.target.value)} placeholder="x coordinate" className="input-dark w-full text-xs py-1" />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-500 block mb-1">G.Y</label>
+                <input value={gy} onChange={e => setGy(e.target.value)} placeholder="y coordinate" className="input-dark w-full text-xs py-1" />
+              </div>
+            </div>
+            <button onClick={handleSetGenerator} className="btn-outline border-green-500/20 hover:border-green-500/50 text-[10px] py-1.5 px-3">SET GENERATOR & COMPUTE ORDER</button>
+            {orderN && <div className="mt-3 text-[10px] text-green-400 font-mono">Order n = {orderN}</div>}
+          </div>
+
+          {/* STEP 3 */}
+          {activeSubTab === "keygen" ? (
+            <div className="bg-[#0b100e] border border-green-500/10 p-5 rounded-xl">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-xs text-green-500 font-bold uppercase tracking-widest">STEP 3 - GENERATE KEY PAIR</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-mono mb-4">Choose private key d, or leave blank to auto-generate. Q = d×G.</p>
+              <div className="mb-4">
+                <label className="text-[9px] text-slate-500 block mb-1">PRIVATE KEY D (1 TO N-1)</label>
+                <input value={d} onChange={e => setD(e.target.value)} placeholder="auto-generate if blank" className="input-dark w-full text-xs py-1" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleGenerateKey} className="btn-outline border-green-500/20 hover:border-green-500/50 text-[10px] py-1.5 px-3">GENERATE KEY PAIR</button>
+                <button onClick={() => setKeyPair(null)} className="btn-outline border-white/10 text-[10px] py-1.5 px-3">CLEAR</button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-[#0b100e] border border-green-500/10 p-5 rounded-xl">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-xs text-green-500 font-bold uppercase tracking-widest">STEP 3 - ALICE & BOB KEYS</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-[9px] text-slate-500 block mb-1">ALICE PRIVATE KEY A</label>
+                  <input value={privA} onChange={e => setPrivA(e.target.value)} placeholder="auto" className="input-dark w-full text-xs py-1" />
+                </div>
+                <div>
+                  <label className="text-[9px] text-slate-500 block mb-1">BOB PRIVATE KEY B</label>
+                  <input value={privB} onChange={e => setPrivB(e.target.value)} placeholder="auto" className="input-dark w-full text-xs py-1" />
+                </div>
+              </div>
+              <button onClick={handleRunECDH} className="btn-outline border-green-500/20 hover:border-green-500/50 text-[10px] py-1.5 px-3 w-full mb-2">RUN ECDH EXCHANGE</button>
+            </div>
+          )}
+
+        </div>
+
+        {/* RIGHT COLUMN - OUTPUT */}
+        <div className="bg-[#050807] border border-green-500/20 p-5 rounded-xl min-h-[400px] flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <span className="text-xs text-green-500 font-bold uppercase tracking-widest">OUTPUT</span>
+            </div>
+            <button onClick={() => { setOutputLog([]); setPoints([]); }} className="text-[9px] text-slate-500 hover:text-white">CLEAR OUTPUT</button>
+          </div>
+          
+          <div className="flex-1 overflow-auto space-y-3 font-mono text-[10px]">
+            {outputLog.map((log, i) => (
+              <div key={i} className="text-slate-300 border-l-2 border-green-500/30 pl-2 py-0.5">{log}</div>
+            ))}
+
+            {points.length > 0 && (
+              <div className="mt-4 p-3 bg-black/40 rounded border border-white/5">
+                <div className="text-green-500 mb-2 font-bold uppercase">Points on Curve:</div>
+                <div className="flex flex-wrap gap-1">
+                  {points.map((pt, i) => (
+                    <div key={i} onClick={() => { setGx(pt.x.toString()); setGy(pt.y.toString()); }}
+                      className="px-2 py-1 bg-white/5 hover:bg-green-500/20 cursor-pointer rounded text-[9px] text-slate-300">
+                      ({pt.x}, {pt.y})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {keyPair && (
+              <div className="mt-4 p-3 bg-green-500/10 rounded border border-green-500/20 space-y-2">
+                <div className="text-green-400 font-bold uppercase">Generated Key Pair</div>
+                <div>Private Key (d): <span className="text-white">{keyPair.private_key}</span></div>
+                <div>Public Key (Q): <span className="text-white">({keyPair.public_key.x}, {keyPair.public_key.y})</span></div>
+              </div>
+            )}
+
+            {ecdhResult && (
+              <div className="mt-4 p-3 bg-green-500/10 rounded border border-green-500/20 space-y-2">
+                <div className="text-green-400 font-bold uppercase">ECDH Complete</div>
+                <div>Alice's Public Key: <span className="text-slate-300">({ecdhResult.alice_public.x}, {ecdhResult.alice_public.y})</span></div>
+                <div>Bob's Public Key: <span className="text-slate-300">({ecdhResult.bob_public.x}, {ecdhResult.bob_public.y})</span></div>
+                <div className="pt-2 mt-2 border-t border-green-500/20">
+                  <span className="text-green-400 font-bold">SHARED SECRET:</span> <span className="text-white">({ecdhResult.shared_secret.x}, {ecdhResult.shared_secret.y})</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

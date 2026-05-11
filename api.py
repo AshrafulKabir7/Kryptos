@@ -9,7 +9,7 @@ import classical.double_transposition as dt_mod
 import symmetric.des as des_mod
 import symmetric.aes as aes_mod
 import public_key.rsa as rsa_mod
-from public_key.ecc import get_small_demo_curve, get_secp256k1, get_p256, ECPoint
+import public_key.ecc as ecc_mod
 
 app = FastAPI(title="Kryptos API")
 
@@ -51,14 +51,35 @@ class RSADecryptRequest(BaseModel):
     n: str
     d: str
 
-class ECCGenRequest(BaseModel):
-    curve_name: str = "P-256"
+class ECCPointsRequest(BaseModel):
+    p: int
+    a: int
+    b: int
+
+class ECCOrderRequest(BaseModel):
+    p: int
+    a: int
+    b: int
+    Gx: int
+    Gy: int
+
+class ECCKeyPairRequest(BaseModel):
+    p: int
+    a: int
+    b: int
+    Gx: int
+    Gy: int
+    n: Optional[int] = None
+    private_key: Optional[int] = None
 
 class ECCECDHRequest(BaseModel):
-    curve_name: str
-    private_key: int
-    other_public_x: int
-    other_public_y: int
+    p: int
+    a: int
+    b: int
+    Gx: int
+    Gy: int
+    priv_A: int
+    priv_B: int
 
 class AuthRequest(BaseModel):
     username: str
@@ -230,23 +251,32 @@ def rsa_decrypt(req: RSADecryptRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 # ======== PUBLIC KEY — ECC ========
-def get_curve(name: str):
-    if name == "Demo":
-        return get_small_demo_curve()
-    elif name == "secp256k1":
-        return get_secp256k1()
-    else:
-        return get_p256()
-
-@app.post("/api/public/ecc/generate")
-def ecc_generate(req: ECCGenRequest):
+@app.post("/api/public/ecc/points")
+def ecc_find_points(req: ECCPointsRequest):
     try:
-        curve = get_curve(req.curve_name)
-        d, Q = curve.generate_key_pair()
+        points = ecc_mod.find_all_points(req.p, req.a, req.b)
+        return {"points": [{"x": p[0], "y": p[1]} for p in points if p != (None, None)]}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/public/ecc/order")
+def ecc_compute_order(req: ECCOrderRequest):
+    try:
+        n = ecc_mod.compute_order(req.p, req.a, (req.Gx, req.Gy))
+        return {"n": n}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/public/ecc/keypair")
+def ecc_generate_keypair(req: ECCKeyPairRequest):
+    try:
+        d, Q = ecc_mod.generate_key_pair(
+            req.p, req.a, req.b, (req.Gx, req.Gy), 
+            private_key=req.private_key, n=req.n
+        )
         return {
-            "domain": {"p": str(curve.p), "a": str(curve.a), "b": str(curve.b), "G": str(curve.G), "n": str(curve.n)},
             "private_key": str(d),
-            "public_key": {"x": str(Q.x), "y": str(Q.y)}
+            "public_key": {"x": str(Q[0]), "y": str(Q[1])}
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -254,12 +284,14 @@ def ecc_generate(req: ECCGenRequest):
 @app.post("/api/public/ecc/ecdh")
 def ecc_ecdh(req: ECCECDHRequest):
     try:
-        curve = get_curve(req.curve_name)
-        other_Q = ECPoint(req.other_public_x, req.other_public_y)
-        shared = curve.ecdh_shared_key(req.private_key, other_Q)
+        pub_A, pub_B, shared = ecc_mod.ecdh_key_exchange(
+            req.p, req.a, req.b, (req.Gx, req.Gy), 
+            req.priv_A, req.priv_B
+        )
         return {
-            "shared_key_x": str(shared.x),
-            "shared_key_y": str(shared.y)
+            "alice_public": {"x": str(pub_A[0]), "y": str(pub_A[1])},
+            "bob_public": {"x": str(pub_B[0]), "y": str(pub_B[1])},
+            "shared_secret": {"x": str(shared[0]), "y": str(shared[1])}
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
