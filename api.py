@@ -270,8 +270,14 @@ def ecc_find_points(req: ECCPointsRequest):
 @app.post("/api/public/ecc/order")
 def ecc_compute_order(req: ECCOrderRequest):
     try:
-        n = ecc_mod.compute_order(req.p, req.a, (req.Gx, req.Gy))
-        return {"n": n}
+        n, multiples = ecc_mod.compute_order(req.p, req.a, (req.Gx, req.Gy), return_multiples=True)
+        fmt_multiples = []
+        for k, pt in multiples:
+            if pt == (None, None):
+                fmt_multiples.append({"k": k, "x": None, "y": None})
+            else:
+                fmt_multiples.append({"k": k, "x": pt[0], "y": pt[1]})
+        return {"n": n, "multiples": fmt_multiples}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

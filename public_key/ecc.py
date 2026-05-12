@@ -63,18 +63,24 @@ def find_all_points(p, a, b):
                 points.append((x, y))
     return points
 
-def compute_order(p, a, P):
+def compute_order(p, a, P, return_multiples=False):
     if P == (None, None):
+        if return_multiples:
+            return 1, [(1, (None, None))]
         return 1
         
     current = P
     n = 1
+    multiples = [(1, P)]
     while current != (None, None):
         current = point_add(p, a, current, P)
         n += 1
+        multiples.append((n, current))
         # Failsafe
         if n > 10000:
             raise ValueError("Order is too large to compute by brute force, or point is not a generator.")
+    if return_multiples:
+        return n, multiples
     return n
 
 def generate_key_pair(p, a, b, G, private_key=None, n=None):

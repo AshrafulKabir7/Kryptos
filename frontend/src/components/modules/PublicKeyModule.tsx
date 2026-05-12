@@ -233,6 +233,7 @@ export function ECCAlgorithm() {
   const [gx, setGx] = useState("");
   const [gy, setGy] = useState("");
   const [orderN, setOrderN] = useState<string | null>(null);
+  const [multiples, setMultiples] = useState<any[]>([]);
 
   // State for Step 3 Keygen
   const [d, setD] = useState("");
@@ -265,6 +266,7 @@ export function ECCAlgorithm() {
         p: parseInt(p), a: parseInt(a), b: parseInt(b), Gx: parseInt(gx), Gy: parseInt(gy)
       });
       setOrderN(res.data.n.toString());
+      setMultiples(res.data.multiples || []);
       addLog(`Generator G = (${gx}, ${gy}) has Order n = ${res.data.n}.`);
     } catch (err: any) { alert("Error: " + (err.response?.data?.detail || err.message)); }
   };
@@ -367,7 +369,34 @@ export function ECCAlgorithm() {
               </div>
             </div>
             <button onClick={handleSetGenerator} className="btn-outline border-green-500/20 hover:border-green-500/50 text-[10px] py-1.5 px-3">SET GENERATOR & COMPUTE ORDER</button>
-            {orderN && <div className="mt-3 text-[10px] text-green-400 font-mono">Order n = {orderN}</div>}
+            {orderN && (
+              <div className="mt-3">
+                <div className="text-[10px] text-green-400 font-mono mb-2">Order n = {orderN}</div>
+                {multiples.length > 0 && (
+                  <div className="mt-2 text-[10px] text-slate-300">
+                    <div className="text-[9px] text-slate-400 font-mono mb-2">All multiples of G:</div>
+                    <div className="max-h-40 overflow-y-auto pr-1">
+                      <table className="w-full text-left font-mono">
+                        <thead>
+                          <tr className="border-b border-green-500/20 text-green-500">
+                            <th className="py-1">K</th>
+                            <th className="py-1">KG (X, Y)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {multiples.map((m: any) => (
+                            <tr key={m.k} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                              <td className="py-1.5">{m.k}G</td>
+                              <td className="py-1.5 text-green-300">{m.x === null ? "0 - Point at Infinity" : `(${m.x}, ${m.y})`}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* STEP 3 */}
